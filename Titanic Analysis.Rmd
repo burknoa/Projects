@@ -1,0 +1,192 @@
+---
+title: "Titanic Analysis"
+author: "Noah Burke"
+date: "2026-04-17"
+output:
+  html_document:
+    theme: flatly
+---
+
+Description:
+  This project is focused on the train.csv portion of Kaggles "Titanic" data set. The goal is to view and analyze the data set to search for correlations between the variables and whether the person survived as well as view the general data throughout. 
+
+I will first import my packages. 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+```
+
+Next I will import my data set into the file and give it a file pointer. 
+
+```{r}
+dat <- read.csv("train.csv")
+```
+
+Now that the csv file is stored, I will view the variables and first bit of information using the head function. Then find the total number of rows and columns using Dim. 
+
+```{r}
+head(dat, n=10)
+dim(dat)
+```
+
+Variables of focus will be:<br>
+  - PassengerId<br>
+  - Survived<br>
+  - Sex<br>
+  - Age<br>
+  - Pclass<br>
+  - Fare<br>
+
+Number of Rows: 891   Number of Columns: 12
+
+I would like to first view the counts for survived and did not survive, then sort these counts by age and sex.
+```{r}
+dat %>% count(Survived) 
+```
+
+
+Survived: 342    Non-Survivor: 549
+
+
+1.*Age and Sex*
+
+```{r}
+dat2 <- dat %>% mutate(age_groups = 
+                 case_when(
+                   Age < 18 ~ "0-17",
+                   Age < 26 ~ "18-25",
+                   Age < 36 ~ "26-35",
+                   Age < 46 ~ "36-45",
+                   Age < 56 ~ "46-55",
+                   Age > 55 ~ "55+",
+                   is.na(Age) ~ "Unknown"
+                 )) %>% group_by(age_groups,Sex) %>% count(Survived)
+tibble(dat2)
+```
+
+  This table combines certain "Age" values into groups then shows the counts for survivors and non-survivors by age group and gender. To make this easier to visualize I will next show this info in graphical form. 
+Note: The values on the Y-axis will be the number of survivors. 
+
+```{r}
+dat2 %>% filter(Survived == 1) %>% ggplot(aes(x = age_groups,y = n))+geom_col() + labs(
+  title = "Survivors by Age Group", x = "Age Groups", y = "Number of Survivors"
+) + theme_bw()
+```
+  <br>Using this first graph, we learn vital information on the affect of age on the likelihood of someone surviving. Ignoring the "Unknown" column it seem that there is a trend of age groups between 0 and 35 having a survivor count of at least 50 and 36+ seeing the opposite with no groups with a count above 50. To check the validity of this argument I will check the mean/median and the total counts for the survivors and non survivors.
+
+```{r}
+dat %>% group_by(Survived)%>% summarise(mean_age = mean(Age, na.rm = TRUE))
+dat %>% group_by(Survived)%>% summarise(median_age = median(Age, na.rm = TRUE))
+dat2 %>% group_by(age_groups)%>% summarise(n)
+```
+
+  The mean and median show that the most frequent age group to be a survivor and a non-survivor are both within the 26-35 age group. This along with the total counts show that this is most likely due to the age group taking of most of the total count. Although the graph shows a higher amount of young survivors this is most likely due to total counts. A better way to represent the data would be to graph the proportions of each age groups that survived. 
+
+```{r}
+dat_new <- dat %>% mutate(age_groups = 
+                 case_when(
+                   Age < 18 ~ "0-17",
+                   Age < 26 ~ "18-25",
+                   Age < 36 ~ "26-35",
+                   Age < 46 ~ "36-45",
+                   Age < 56 ~ "46-55",
+                   Age > 55 ~ "55+",
+                   is.na(Age) ~ "Unknown"
+                 ))
+
+dat_new %>% group_by(age_groups) %>% summarise(prop_surv = mean(Survived == 1, na.rm = TRUE))%>%ggplot(aes(x = age_groups,y = prop_surv))+geom_col() + labs(
+  title = "Survivors Proportion by Age Group", x = "Age Groups", y = "Proportion of Survivors"
+) + theme_bw()
+
+
+```
+  
+  <br>This chart is a much better to spot meaningful differences as it takes into account differences in age group totals.<br>
+  _Results_:<br>
+    0-17: This group has a survival percentage above 50% the only group above that mark.<br>
+    Rest: There is not a significant difference in the proportion of the other age groups.<br>
+    
+  _Conclusion_:<br>
+    - Being a part of the 0-17 group gives the persons a larger chance to be a Survivor. While the is some variation in proportion past the first age       group 26 - 55 sees very similar odds and a slight dip in chances for 18-25 and 55+.<br>
+
+
+```{r}
+
+dat_new %>% group_by(Sex) %>% summarise(prop_surv = mean(Survived == 1, na.rm = TRUE))%>%ggplot(aes(x = Sex,y = prop_surv))+geom_col() + labs(
+  title = "Survivors Proportion by Sex", x = "Sex", y = "Proportion of Survivors"
+) + theme_bw()
+
+```
+<br>Results:<br>
+  Survival Percentage:<br>
+    - Female: ~ 75%<br>
+    - Male:  ~ 19%<br>
+Conclusion:
+  - Survival is very heavily correlated with the sex of the individual. Given 10 of each sex it is likely that 7-8 women would survive and only 1-2 men. <br>
+
+1b. *Age and Sex* (Conclusion):
+  
+  _Summary_:<br>
+    - Throughout the section "Age and Sex" I used mainly graphical methods to search for correlations between the variable "Survived" and both "Sex" and "Age" as well as a few local variables such as "age group" and "prop_surv". <br>
+    
+    _Result/Conclusion_:
+  - Firstly it was discovered that 0 - 35 has the highest total amount of survivors. This is mostly due to those age groups having a high number of individuals. Using a local variable and a column graph, the age groups and proportion of those in the group that survived is displayed. From this we can conclude that only significant difference in survival odds can be found in the 0 - 17 groups over 50% chance. No other age group can be found above the 50% mark. 26 - 55 show a relatively similar proportion of survivors with a slight drop for both age groups 18 - 25 and 55+. When it comes to sex there is a aggressive statistical difference in proportion of women vs men survivors. Between the sexes there is a roughly 55% difference in survival rate with females sitting around 75% and 19% for males.<br> 
+ 
+2. *Class and Fare*:
+
+<br>The second area of focus will be how does ticket class (1,2,3) and fare effect survival rate.<br>
+
+```{r}
+
+dat_new %>% group_by(Pclass) %>% summarise(prop_surv = mean(Survived == 1, na.rm = TRUE))%>%ggplot(aes(x = Pclass,y = prop_surv))+geom_col() + labs(
+  title = "Survivors Proportion by Class", x = "Class", y = "Proportion of Survivors"
+) + theme_bw()
+
+```
+<br>The Class variable is stated to be a proxy for socio-economic status 1 being upper, 2 being middle, 3 being lower. Looking at this graph there is a glaringly obvious trend. Out of the three classes, class 1 has the highest survivor proportion by far. The proportions follow the order of classes and show that the higher "status" the higher proportion of survivors. To confirm this I will run a variable correlation test.<br>
+
+```{r}
+
+dat_new %>% summarise(test = list(cor.test(Pclass, Survived))) %>% pull(test)
+
+```
+<br>The variables used in this Pearson's correlation test are Pclass and Survived. The test statistic of -10.725 confirms an strong negative correlation between the variables. The correlation coefficient value of -.338 shows this as well. Lastly, the P-Value of close to 0 means that the chance to this correlation to happen by chance is close to none.<br>
+
+```{r}
+dat_new %>% 
+  group_by(Fare) %>% 
+  summarise(prop_surv = mean(Survived, na.rm = TRUE)) %>%
+  ggplot(aes(x = Fare, y = prop_surv)) +
+  geom_smooth(method = "loess") + geom_jitter()
+  labs(
+    title = "Proportion of Survivors by Fare",
+    x = "Fare in $",
+    y = "Proportion Survived"
+  ) +
+  theme_bw()
+
+```
+
+
+
+For the secondary part of section 2 I plotted fare against the proportion of survivors at that fare level on a smoothed line. This graph gives us the general idea of the shape of this relationship. We can see that there is a somewhat positive relationship as fare increases. I will again check this using a correlation test. 
+
+
+```{r}
+dat_new %>% summarise(test = list(cor.test(Fare, Survived))) %>% pull(test)
+```
+The variable used in this Pearson's correlation test are "Fare" and "Survived". The test statistic (7.939) and the cor coefficient (.257) along with the p-value near zero proves that there is in fact a positive correlation between the fare and odds of survival. 
+
+2b.*Class and Fare* (Conclusion):
+  
+  _Summary_: 
+    Throughout the section "Class and Fare" I explored the relationship of monetary and socio-economic status on the rate of survival. This was done with a focus on graphical analysis as well as correlation tests. 
+    
+  _Results/Conclusion_:
+    The rate of survival is heavily influenced by both fare and class. The relationship between class and survival rate was first established through a column graph in which probability of survival was plotted against each class (1 = Upper, 2 = Middle, 3 = Lower.). Visually we could see that as class level decreased so did the chance of survival. This was confirmed by a correlation test for the variables "Pclass" and "Survived". The test statistics confirmed a strong negative correlation with a close to 0 p-value. Similarly with fare, the relationship was demonstrated with a smoothed scatter plot as well as a correlation test. The graph shows a somewhat positive relationship and this is confirmed by the correlation test with a positive test statistic and a p-value near 0. Utilizing these graphs and tests, we can come to the conclusion that the higher the social class and fare the higher the probability of survival is. 
+
